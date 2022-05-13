@@ -1,71 +1,52 @@
-/* Copyright (C) 2019 by Maximilian Schulke */
-
-/*
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 mod colors;
 mod draw;
 mod game;
+mod select;
 mod physics;
 mod snake;
+extern crate glutin_window;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate piston;
 
+use glutin_window::GlutinWindow as Window;
+use opengl_graphics::{GlGraphics, OpenGL};
+use piston::event_loop::{EventSettings, Events};
+use piston::input::{RenderEvent, UpdateArgs, UpdateEvent};
+use piston::window::WindowSettings;
 use draw::blocks_in_pixels;
 use game::Game;
+use select::Select;
 use piston_window::*;
 
-const WINDOW_TITLE: &'static str = "rsnake";
+const WINDOW_TITLE: &'static str = "Snake Rust";
 const WIDTH: u32 = 25;
 const HEIGHT: u32 = 25;
 
 fn main() {
-    let size = [blocks_in_pixels(WIDTH), blocks_in_pixels(HEIGHT)];
+    let opengl = OpenGL::V3_2;
 
-    let mut window: PistonWindow = WindowSettings::new(WINDOW_TITLE, size)
-        .resizable(false)
+    // Create an Glutin window.
+    let mut window: Window = WindowSettings::new("spinning-square", [200, 200])
+        .graphics_api(opengl)
+        .exit_on_esc(true)
         .build()
         .unwrap();
 
-    let assets = find_folder::Search::ParentsThenKids(3, 3)
-        .for_folder("assets")
-        .unwrap();
-    let ref font = assets.join("retro-gaming.ttf");
-    let factory = window.factory.clone();
-    let mut glyphs = Glyphs::new(font, factory, TextureSettings::new()).unwrap();
+    // Create a new game and run it.
+    let mut select = Select {
+        gl: GlGraphics::new(opengl),
+        rotation: 0.0,
+    };
 
-    let mut main: Game = Game::new(WIDTH, HEIGHT);
-    main.start();
-
-    while let Some(event) = window.next() {
-        if let Some(Button::Keyboard(key)) = event.press_args() {
-            main.key_down(key);
+    let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
+        if let Some(args) = e.render_args() {
+            select.render(&args);
         }
 
-        window.draw_2d(&event, |ctx, g| {
-            clear(colors::BACKGROUND, g);
-            text::Text::new_color(colors::SCORE, 20)
-                .draw(
-                    main.get_score().to_string().as_ref(),
-                    &mut glyphs,
-                    &ctx.draw_state,
-                    ctx.transform.trans(0.0, 20.0),
-                    g,
-                )
-                .unwrap();
-            main.draw(ctx, g);
-        });
-
-        event.update(|arg| {
-            main.update(arg.dt);
-        });
+        if let Some(args) = e.update_args() {
+            select.update(&args);
+        }
     }
 }

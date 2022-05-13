@@ -1,6 +1,5 @@
 use piston_window::*;
 use rand::Rng;
-
 use crate::colors;
 use crate::draw::*;
 use crate::physics::{Direction, Position};
